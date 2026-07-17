@@ -8,6 +8,9 @@ import {
   Mail, 
   Star
 } from 'lucide-react';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { saveFeedback } from '../lib/firebaseService';
 
 interface FeedbackItem {
   id: string;
@@ -77,6 +80,33 @@ export default function SystemFeedbackView({
     }
   });
 
+  // Load feedbacks from Firestore on mount
+  useEffect(() => {
+    async function loadFeedbacks() {
+      try {
+        const colRef = collection(db, 'feedbacks');
+        const snapshot = await getDocs(colRef);
+        if (snapshot.empty) {
+          // Seed initial feedbacks to Firestore
+          console.log('Seeding initial feedbacks to Firestore...');
+          for (const fb of INITIAL_FEEDBACKS) {
+            await saveFeedback(fb);
+          }
+          setFeedbacks(INITIAL_FEEDBACKS);
+        } else {
+          const list: FeedbackItem[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push(docSnap.data() as FeedbackItem);
+          });
+          setFeedbacks(list.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+        }
+      } catch (err) {
+        console.error("Failed to load feedbacks from Firestore, using local:", err);
+      }
+    }
+    loadFeedbacks();
+  }, []);
+
   // Save to database simulation whenever feedbacks change
   useEffect(() => {
     try {
@@ -94,7 +124,7 @@ export default function SystemFeedbackView({
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !content.trim() || !email.trim()) {
       triggerToast("Harap isi Nama, Email, dan Detail Rekomendasi Anda.");
@@ -113,8 +143,15 @@ export default function SystemFeedbackView({
       timestamp: time
     };
 
-    setFeedbacks(prev => [newFb, ...prev]);
-    triggerToast("Rekomendasi Anda berhasil disimpan ke database terintegrasi!");
+    try {
+      await saveFeedback(newFb);
+      setFeedbacks(prev => [newFb, ...prev]);
+      triggerToast("Rekomendasi Anda berhasil disimpan ke Firestore & database terintegrasi!");
+    } catch (err) {
+      console.error("Error saving feedback to Firestore, saving locally only:", err);
+      setFeedbacks(prev => [newFb, ...prev]);
+      triggerToast("Rekomendasi berhasil disimpan secara lokal!");
+    }
     
     // Clear form
     setName('');

@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper to check if data is valid for Customer
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['id', 'name', 'segment', 'recency', 'freqScore', 'monetary', 'status'])
+        && data.keys().size() == 7
+        && data.id is string
+        && data.name is string
+        && data.segment is string
+        && data.recency is int
+        && data.freqScore is int
+        && data.monetary is number
+        && data.status is string;
+    }
+
+    // Helper to check if data is valid for ActionLog
+    function isValidActionLog(data) {
+      return data.keys().hasAll(['id', 'customerId', 'customerName', 'timestamp', 'type', 'notes', 'officer', 'impact', 'status'])
+        && data.keys().size() == 9
+        && data.id is string
+        && data.customerId is string
+        && data.customerName is string
+        && data.timestamp is string
+        && data.type is string
+        && data.notes is string
+        && data.officer is string
+        && data.impact is number
+        && data.status is string;
+    }
+
+    // Helper to check if data is valid for ScoringConfig
+    function isValidScoringConfig(data) {
+      return data.keys().hasAll(['recencyMed', 'recencyHigh', 'freqMultiplier', 'highScoreThreshold'])
+        && data.keys().size() == 4
+        && data.recencyMed is int
+        && data.recencyHigh is int
+        && data.freqMultiplier is number
+        && data.highScoreThreshold is number;
+    }
+
+    // Helper to check if data is valid for FeedbackItem
+    function isValidFeedbackItem(data) {
+      return data.keys().hasAll(['id', 'name', 'company', 'email', 'category', 'rating', 'content', 'timestamp'])
+        && data.keys().size() == 8
+        && data.id is string
+        && data.name is string
+        && data.company is string
+        && data.email is string
+        && data.category is string
+        && data.rating is int
+        && data.content is string
+        && data.timestamp is string;
+    }
+
+    match /customers/{customerId} {
+      allow read, delete: if true;
+      allow create, update: if isValidCustomer(request.resource.data);
+    }
+
+    match /actions/{actionId} {
+      allow read, delete: if true;
+      allow create, update: if isValidActionLog(request.resource.data);
+    }
+
+    match /config/scoring {
+      allow read: if true;
+      allow write: if isValidScoringConfig(request.resource.data);
+    }
+
+    match /feedbacks/{feedbackId} {
+      allow read, delete: if true;
+      allow create, update: if isValidFeedbackItem(request.resource.data);
+    }
+  }
+}

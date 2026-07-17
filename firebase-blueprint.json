@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "A customer portfolio document containing RFM scores and risk status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the customer" },
+        "name": { "type": "string", "description": "The company name of the client" },
+        "segment": { "type": "string", "description": "The commercial segment of the client (Enterprise, Mid-Market, SMB)" },
+        "recency": { "type": "integer", "description": "The number of days since the last contact" },
+        "freqScore": { "type": "integer", "description": "The SLA frequency score (1 to 10)" },
+        "monetary": { "type": "number", "description": "The financial value of the contract" },
+        "status": { "type": "string", "description": "The action status of the customer (Pending, Contacted, Declined)" }
+      },
+      "required": ["id", "name", "segment", "recency", "freqScore", "monetary", "status"]
+    },
+    "ActionLog": {
+      "title": "ActionLog",
+      "description": "An action or engagement log entry showing communication with a customer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the action log" },
+        "customerId": { "type": "string", "description": "The related customer ID" },
+        "customerName": { "type": "string", "description": "The related customer name" },
+        "timestamp": { "type": "string", "description": "The timestamp of when the action was recorded" },
+        "type": { "type": "string", "description": "The type or channel of communication (Email Outreach, Call, Meeting, etc.)" },
+        "notes": { "type": "string", "description": "Detailed notes about the outreach" },
+        "officer": { "type": "string", "description": "The officer who completed the outreach" },
+        "impact": { "type": "number", "description": "The financial value of the contract saved or at risk" },
+        "status": { "type": "string", "description": "The result status of the action" }
+      },
+      "required": ["id", "customerId", "customerName", "timestamp", "type", "notes", "officer", "impact", "status"]
+    },
+    "ScoringConfig": {
+      "title": "ScoringConfig",
+      "description": "Configuration thresholds for calculations of risk categories",
+      "type": "object",
+      "properties": {
+        "recencyMed": { "type": "integer", "description": "Medium risk recency threshold" },
+        "recencyHigh": { "type": "integer", "description": "High risk recency threshold" },
+        "freqMultiplier": { "type": "number", "description": "The multiplier applied to frequency scores" },
+        "highScoreThreshold": { "type": "number", "description": "The threshold for high risk classification" }
+      },
+      "required": ["recencyMed", "recencyHigh", "freqMultiplier", "highScoreThreshold"]
+    },
+    "FeedbackItem": {
+      "title": "FeedbackItem",
+      "description": "A feedback item submitted by users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique feedback ID" },
+        "name": { "type": "string", "description": "Sender name" },
+        "company": { "type": "string", "description": "Sender company" },
+        "email": { "type": "string", "description": "Sender email" },
+        "category": { "type": "string", "description": "Feedback category" },
+        "rating": { "type": "integer", "description": "Rating score from 1 to 5" },
+        "content": { "type": "string", "description": "The message body content" },
+        "timestamp": { "type": "string", "description": "The timestamp of submission" }
+      },
+      "required": ["id", "name", "company", "email", "category", "rating", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "The collection of client customer records"
+    },
+    "/actions/{actionId}": {
+      "schema": "ActionLog",
+      "description": "The collection of action or outreach log events"
+    },
+    "/config/scoring": {
+      "schema": "ScoringConfig",
+      "description": "The active scoring calculation configurations"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "FeedbackItem",
+      "description": "User feedbacks submitted via the app portal"
+    }
+  }
+}

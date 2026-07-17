@@ -14,6 +14,16 @@ import SystemFeedbackView from './components/SystemFeedbackView';
 import OutreachModal from './components/OutreachModal';
 import AddCustomerModal from './components/AddCustomerModal';
 import Toast from './components/Toast';
+import { 
+  getCustomers, 
+  saveCustomer, 
+  deleteCustomer, 
+  getActions, 
+  saveAction, 
+  deleteAction, 
+  getConfig, 
+  saveConfig 
+} from './lib/firebaseService';
 
 const INITIAL_CUSTOMERS: Customer[] = [
   { id: "CUST-001", name: "PT Astra Internasional, Tbk", segment: "Enterprise", recency: 85, freqScore: 4, monetary: 350000000, status: "Pending" },
@@ -75,6 +85,33 @@ export default function App() {
       return INITIAL_CONFIG;
     }
   });
+
+  // Load data from Firestore on mount to sync with our live database
+  useEffect(() => {
+    async function loadFirestoreData() {
+      try {
+        const firestoreCustomers = await getCustomers();
+        setCustomers(firestoreCustomers);
+      } catch (err) {
+        console.error("Failed to load customers from Firestore, using local:", err);
+      }
+
+      try {
+        const firestoreActions = await getActions();
+        setActions(firestoreActions);
+      } catch (err) {
+        console.error("Failed to load actions from Firestore, using local:", err);
+      }
+
+      try {
+        const firestoreConfig = await getConfig();
+        setConfig(firestoreConfig);
+      } catch (err) {
+        console.error("Failed to load config from Firestore, using local:", err);
+      }
+    }
+    loadFirestoreData();
+  }, []);
 
   // Automatically save state changes to LocalStorage database simulator
   useEffect(() => {
@@ -227,7 +264,7 @@ export default function App() {
     }
   };
 
-  const handleOutreachSubmit = (data: {
+  const handleOutreachSubmit = async (data: {
     customerId: string;
     channel: string;
     notes: string;
@@ -253,23 +290,37 @@ export default function App() {
         status: data.status
       };
 
-      setActions(prev => [newAction, ...prev]);
-      setCustomers(prev => prev.map(c => c.id === targetCust.id ? { ...c, status: data.status } : c));
-      triggerToast(`Engagement logged for ${targetCust.name}!`);
+      try {
+        const updatedCust: Customer = { ...targetCust, status: data.status };
+        // Delete ephemeral or calculated fields if they exist in state before saving to match schema
+        const custToSave = { ...updatedCust };
+        delete custToSave.riskScore;
+        delete custToSave.riskCategory;
+
+        await saveAction(newAction);
+        await saveCustomer(custToSave);
+
+        setActions(prev => [newAction, ...prev]);
+        setCustomers(prev => prev.map(c => c.id === targetCust.id ? updatedCust : c));
+        triggerToast(`Engagement logged to Firestore for ${targetCust.name}!`);
+      } catch (err) {
+        console.error("Failed to save to Firestore:", err);
+        triggerToast("Failed to save to live Firestore. Saved locally.");
+      }
     } else {
       // Bulk Outreach Logger
-      const checkedIds = Array.from(selectedIndices);
+      const checkedIds = Array.from(selectedIndices) as string[];
       let counter = 0;
 
       const newActions: ActionLog[] = [];
       const updatedCustomerIds: Record<string, string> = {};
 
-      checkedIds.forEach(id => {
+      for (const id of checkedIds) {
         const targetCust = computedCustomers.find(c => c.id === id);
         if (targetCust && targetCust.status === "Pending") {
           counter++;
           const actId = `ACT-BLK-${Date.now()}-${counter}`;
-          newActions.push({
+          const newAction: ActionLog = {
             id: actId,
             customerId: targetCust.id,
             customerName: targetCust.name,
@@ -279,10 +330,23 @@ export default function App() {
             officer: "Ikhsan (Sense)",
             impact: targetCust.monetary,
             status: data.status
-          });
-          updatedCustomerIds[targetCust.id] = data.status;
+          };
+
+          const updatedCust: Customer = { ...targetCust, status: data.status };
+          const custToSave = { ...updatedCust };
+          delete custToSave.riskScore;
+          delete custToSave.riskCategory;
+
+          try {
+            await saveAction(newAction);
+            await saveCustomer(custToSave);
+            newActions.push(newAction);
+            updatedCustomerIds[targetCust.id] = data.status;
+          } catch (err) {
+            console.error(`Failed to save bulk item for ${targetCust.name}:`, err);
+          }
         }
-      });
+      }
 
       if (newActions.length > 0) {
         setActions(prev => [...newActions, ...prev]);
@@ -296,19 +360,19 @@ export default function App() {
     setIsOutreachOpen(false);
   };
 
-  const handleBulkMitigate = () => {
-    const checkedIds = Array.from(selectedIndices);
+  const handleBulkMitigate = async () => {
+    const checkedIds = Array.from(selectedIndices) as string[];
     let counter = 0;
     const time = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const newActions: ActionLog[] = [];
     const updatedCustomerIds: Record<string, string> = {};
 
-    checkedIds.forEach(id => {
+    for (const id of checkedIds) {
       const targetCust = computedCustomers.find(c => c.id === id);
       if (targetCust && targetCust.status === "Pending") {
         counter++;
         const actId = `ACT-BLK-MIT-${Date.now()}-${counter}`;
-        newActions.push({
+        const newAction: ActionLog = {
           id: actId,
           customerId: targetCust.id,
           customerName: targetCust.name,
@@ -318,10 +382,23 @@ export default function App() {
           officer: "Ikhsan (Sense)",
           impact: targetCust.monetary,
           status: "Contacted"
-        });
-        updatedCustomerIds[targetCust.id] = "Contacted";
+        };
+
+        const updatedCust: Customer = { ...targetCust, status: "Contacted" };
+        const custToSave = { ...updatedCust };
+        delete custToSave.riskScore;
+        delete custToSave.riskCategory;
+
+        try {
+          await saveAction(newAction);
+          await saveCustomer(custToSave);
+          newActions.push(newAction);
+          updatedCustomerIds[targetCust.id] = "Contacted";
+        } catch (err) {
+          console.error(`Failed to bulk mitigate for ${targetCust.name}:`, err);
+        }
       }
-    });
+    }
 
     if (newActions.length > 0) {
       setActions(prev => [...newActions, ...prev]);
@@ -329,17 +406,24 @@ export default function App() {
     }
 
     setSelectedIndices(new Set());
-    triggerToast(`Mitigated risk exposure for ${counter} clients!`);
+    triggerToast(`Mitigated risk exposure for ${counter} clients to Firestore!`);
   };
 
-  const handleBulkDelete = () => {
-    const checkedIds = Array.from(selectedIndices);
+  const handleBulkDelete = async () => {
+    const checkedIds = Array.from(selectedIndices) as string[];
+    for (const id of checkedIds) {
+      try {
+        await deleteCustomer(id);
+      } catch (err) {
+        console.error(`Failed to delete customer ${id} from Firestore:`, err);
+      }
+    }
     setCustomers(prev => prev.filter(c => !selectedIndices.has(c.id)));
     setSelectedIndices(new Set());
-    triggerToast(`Excluded ${checkedIds.length} entries from workspace rosters.`);
+    triggerToast(`Excluded ${checkedIds.length} entries from workspace rosters & Firestore.`);
   };
 
-  const handleAddCustomerSubmit = (data: {
+  const handleAddCustomerSubmit = async (data: {
     name: string;
     segment: string;
     recency: number;
@@ -357,8 +441,15 @@ export default function App() {
       status: "Pending"
     };
 
-    setCustomers(prev => [...prev, newCust]);
-    triggerToast(`Successfully staged profile for ${data.name}!`);
+    try {
+      await saveCustomer(newCust);
+      setCustomers(prev => [...prev, newCust]);
+      triggerToast(`Successfully staged and saved profile for ${data.name} to Firestore!`);
+    } catch (err) {
+      console.error("Failed to add customer to Firestore:", err);
+      setCustomers(prev => [...prev, newCust]);
+      triggerToast(`Staged profile for ${data.name} locally!`);
+    }
     setIsAddCustomerOpen(false);
   };
 
@@ -383,9 +474,16 @@ export default function App() {
     triggerToast("Audit Log CSV successfully exported.");
   };
 
-  const handleSaveConfig = (updated: ScoringConfig) => {
-    setConfig(updated);
-    triggerToast("Global scoring rules updated successfully!");
+  const handleSaveConfig = async (updated: ScoringConfig) => {
+    try {
+      await saveConfig(updated);
+      setConfig(updated);
+      triggerToast("Global scoring rules updated successfully in Firestore!");
+    } catch (err) {
+      console.error("Failed to save scoring config to Firestore:", err);
+      setConfig(updated);
+      triggerToast("Scoring rules updated locally.");
+    }
   };
 
   return (
