@@ -67,14 +67,13 @@ const INITIAL_CONFIG: ScoringConfig = {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const colRef = collection(db, 'customers');
-    const snapshot = await getDocs(colRef);
-    if (snapshot.empty) {
-      // Seeding database on first load
-      console.log('Seeding initial customers to Firestore...');
+    let snapshot = await getDocs(colRef);
+    if (snapshot.empty || snapshot.size < INITIAL_CUSTOMERS.length) {
+      console.log(`Database has ${snapshot.size} customers. Seeding expanded ${INITIAL_CUSTOMERS.length} customers to Firestore...`);
       for (const cust of INITIAL_CUSTOMERS) {
         await setDoc(doc(colRef, cust.id), cust);
       }
-      return INITIAL_CUSTOMERS;
+      snapshot = await getDocs(colRef);
     }
     const list: Customer[] = [];
     snapshot.forEach((docSnap) => {
@@ -115,13 +114,13 @@ export async function deleteCustomer(id: string): Promise<void> {
 export async function getActions(): Promise<ActionLog[]> {
   try {
     const colRef = collection(db, 'actions');
-    const snapshot = await getDocs(colRef);
-    if (snapshot.empty) {
-      console.log('Seeding initial actions to Firestore...');
+    let snapshot = await getDocs(colRef);
+    if (snapshot.empty || snapshot.size < INITIAL_ACTIONS.length) {
+      console.log(`Database has ${snapshot.size} actions. Seeding expanded ${INITIAL_ACTIONS.length} actions to Firestore...`);
       for (const act of INITIAL_ACTIONS) {
         await setDoc(doc(colRef, act.id), act);
       }
-      return INITIAL_ACTIONS;
+      snapshot = await getDocs(colRef);
     }
     const list: ActionLog[] = [];
     snapshot.forEach((docSnap) => {
