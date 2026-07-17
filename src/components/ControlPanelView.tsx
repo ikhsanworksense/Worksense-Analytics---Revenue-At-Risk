@@ -10,6 +10,7 @@ interface ControlPanelViewProps {
   actions: ActionLog[];
   showStats: boolean;
   formatIDRShort: (val: number) => string;
+  onInjectData?: () => void;
 }
 
 export default function ControlPanelView({
@@ -18,7 +19,8 @@ export default function ControlPanelView({
   customers,
   actions,
   showStats,
-  formatIDRShort
+  formatIDRShort,
+  onInjectData
 }: ControlPanelViewProps) {
   const [localConfig, setLocalConfig] = useState<ScoringConfig>({ ...config });
 
@@ -219,6 +221,42 @@ export default function ControlPanelView({
           </div>
         </div>
       </div>
+
+      {/* Database Seeding & Portfolio Expansion Section */}
+      {onInjectData && (
+        <div className="card" style={{ padding: '20px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={16} style={{ color: '#10b981' }} />
+                Database Seeding & Portfolio Expansion
+              </div>
+              <div className="card-sub" style={{ marginTop: '4px' }}>
+                Instantly populate your live Google Cloud Firestore database with a rich, production-grade dataset of 30 enterprise clients and 15 outreach logs.
+              </div>
+            </div>
+            <button
+              onClick={onInjectData}
+              className="btn"
+              style={{
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                padding: '8px 16px',
+                fontSize: '0.8rem',
+                borderRadius: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              <Database size={14} /> Inject Expanded Dataset (30 Clients + 15 Logs)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
