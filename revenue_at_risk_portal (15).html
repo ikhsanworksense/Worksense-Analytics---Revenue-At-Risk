@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BidFlow — Revenue-at-Risk Analytics Portal</title>
+
+<!-- Fonts & Icon Libraries -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js" integrity="sha384-XcdcwHqIPULERb2yDEM4R0XaQKU3YnDsrTmjACBZyfdVVqjh6xQ4/DCMd7XLcA6Y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.383.0/dist/umd/lucide.min.js" integrity="sha384-wHFvAtjmgnkA2PJcMsDaCgdipf7X7YV44X/igbLHpvGiq6T5/PvFKl93grpvtbQT" crossorigin="anonymous"></script>
+
+<style>
+:root {
+  --canvas: oklch(95% 0.005 262);
+  --app: oklch(99% 0.005 262);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(97.5% 0.005 262);
+  --ink: oklch(24% 0.015 262);
+  --ink-2: oklch(45% 0.015 262);
+  --ink-3: oklch(62% 0.015 262);
+  --line: oklch(91.5% 0.008 262);
+  --line-soft: oklch(95% 0.005 262);
+
+  /* Cobalt Tech-Blue & Royal Indigo Accents matching modern Enterprise Theme */
+  --orange: oklch(52% 0.22 262); 
+  --orange-deep: oklch(44% 0.21 262); 
+  --orange-soft: oklch(94% 0.04 262); 
+  --pink: oklch(66% 0.2 6);
+
+  /* Semantic Alerts */
+  --green: oklch(64% 0.15 150);
+  --green-soft: oklch(95% 0.05 150);
+  --blue: oklch(58% 0.11 250);
+  --blue-soft: oklch(95% 0.03 250);
+  --blue-ink: oklch(52% 0.09 250);
+  --amber: oklch(74% 0.13 82);
+  --amber-soft: oklch(94% 0.07 82);
+  --amber-ink: oklch(56% 0.12 70);
+  --red: oklch(64% 0.19 22);
+  --red-soft: oklch(95% 0.04 22);
+  --red-ink: oklch(58% 0.17 22);
+  --purple: oklch(58% 0.14 300);
+
+  --r: 10px;
+  --r-lg: 14px;
+  --shadow-app: 0 1px 3px oklch(24% 0.01 280 / .04), 0 20px 50px oklch(24% 0.01 280 / .10);
+  --shadow-pop: 0 8px 30px oklch(24% 0.01 280 / .16);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+/* Custom layout class for Tremor-Style Donut grid */
+.donut-split-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+@media (min-width: 640px) {
+  .donut-split-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 24px;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; height: 100%; }
+body { 
+  font-family: var(--sans); 
+  background: var(--canvas); 
+  color: var(--ink); 
+  line-height: 1.5; 
+  -webkit-font-smoothing: antialiased; 
+  padding: 0; 
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.tnum { font-variant-numeric: tabular-nums; }
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+h1, h2, h3, h4 { letter-spacing: -.01em; }
+
+/* Edge-to-edge frame layout */
+.frame { 
+  width: 100vw; 
+  height: 100vh; 
+  background: var(--app); 
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden; 
+}
+
+/* App workspace grid layout */
+.app { 
+  display: grid; 
+  grid-template-columns: 260px 1fr; 
+  flex: 1; 
+  min-height: 0; 
+  height: 100%;
+}
+
+.side { 
+  border-right: 1px solid var(--line); 
+  padding: 16px 14px; 
+  display: flex; 
+  flex-direction: column; 
+  background: var(--app); 
+  height: 100%;
+  overflow: hidden; /* Freeze entire outer pane */
+}
+
+/* Sidebar parts that stay static (Freeze Pane) */
+.side-header {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+/* Scrollable container inside sidebar menu */
+.side-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  margin: 8px 0;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Hiding scrollbar tracks for minimalist style */
+.side-scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+.side-scrollable::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
+}
+
+.side-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Sidebar decorative styling */
+.org { display: flex; align-items: center; gap: 11px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 12px; }
+.org .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--surface); display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+.org .name { font-weight: 700; font-size: .9rem; line-height: 1.2; }
+.org .plan { font-size: .72rem; color: var(--ink-3); }
+.org .collapse { margin-left: auto; color: var(--ink-3); display: flex; align-items: center; cursor: pointer; }
+.org .collapse i { width: 15px; height: 15px; }
+
+.search { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); border-radius: 9px; color: var(--ink-3); font-size: .84rem; margin-bottom: 4px; }
+.search i { width: 15px; height: 15px; }
+.search input { border: none; background: transparent; font-size: 0.8rem; outline: none; width: 100%; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+.search .kbd { margin-left: auto; font-size: .68rem; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+
+.sec { font-size: .66rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 14px 8px 6px; }
+.nav { display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: 9px; color: var(--ink-2); font-size: .86rem; font-weight: 500; position: relative; transition: background .15s var(--ease), color .15s var(--ease); width: 100%; text-align: left; }
+.nav i { width: 17px; height: 17px; flex-shrink: 0; }
+.nav:hover { background: var(--surface-2); color: var(--ink); }
+.nav.active { background: var(--orange-soft); color: var(--orange-deep); font-weight: 600; position: relative; }
+.nav.active::before { content: ""; position: absolute; left: -14px; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: var(--orange); }
+.nav .count { margin-left: auto; font-size: .74rem; font-weight: 600; color: var(--ink-3); }
+.nav .count.orange { color: var(--orange-deep); background: var(--orange-soft); padding: 1px 6px; border-radius: 6px; }
+.nav .pindot { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: .74rem; font-weight: 600; color: var(--ink-3); }
+.nav .pindot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pink); }
+
+.foot-link { display: flex; align-items: center; gap: 11px; padding: 7px 10px; border-radius: 9px; color: var(--ink-2); font-size: .85rem; font-weight: 500; text-align: left; width: 100%; }
+.foot-link i { width: 16px; height: 16px; }
+.foot-link:hover { background: var(--surface-2); }
+
+/* MAIN WINDOW WORKSPACE */
+.main { padding: 16px 20px 20px; background: var(--surface); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.head { 
+  position: sticky; 
+  top: -16px; 
+  background: var(--surface); 
+  z-index: 40; 
+  padding-top: 16px; 
+  padding-bottom: 10px; 
+  margin-top: -16px; 
+  border-bottom: 1px solid var(--line-soft); 
+  margin-bottom: 4px; 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+}
+.page-title { font-size: 1.3rem; font-weight: 700; }
+.head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.icon-btn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--ink-2); background: var(--surface); transition: background .15s ease; }
+.icon-btn:hover { background: var(--surface-2); }
+.icon-btn i { width: 15px; height: 15px; }
+.avatars { display: flex; align-items: center; }
+.avatars .av { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -8px; }
+.av { background: var(--ink); color: var(--surface); display: grid; place-items: center; font-size: .7rem; font-weight: 600; }
+.av.more { background: var(--orange); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px; font-size: .8rem; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); transition: background .15s; }
+.btn:hover { background: var(--surface-2); }
+.btn i { width: 14px; height: 14px; }
+.btn.dark { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn.dark:hover { background: oklch(30% 0.01 280); }
+
+/* Dynamic Sub-Toolbar styling */
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 500; color: var(--ink-2); cursor: pointer; user-select: none; }
+.switch { width: 34px; height: 20px; border-radius: 999px; background: var(--orange); position: relative; transition: background .2s var(--ease); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 16px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: left .2s var(--ease); }
+.switch.off { background: var(--line); }
+.switch.off::after { left: 2px; }
+.tb-right { margin-left: auto; display: flex; gap: 8px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--app); transition: all 0.3s var(--ease); }
+.stat { padding: 12px 14px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: none; }
+.stat-label { display: flex; align-items: center; gap: 4px; font-size: .76rem; color: var(--ink-3); font-weight: 500; }
+.stat-label i { width: 12px; height: 12px; }
+.stat-val { font-size: 1.4rem; font-weight: 700; margin: 6px 0 4px; letter-spacing: -.02em; }
+.stat-foot { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--ink-3); }
+.delta { display: inline-flex; align-items: center; gap: 2px; font-weight: 600; color: var(--green); background: var(--green-soft); padding: 1px 6px; border-radius: 999px; }
+.delta.down { color: var(--red-ink); background: var(--red-soft); }
+.delta i { width: 10px; height: 10px; }
+
+.tablewrap { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+thead th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: .76rem; background: var(--surface-2); }
+thead th.num { text-align: right; }
+tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .12s var(--ease); }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr.sel { background: var(--orange-soft); }
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.cell-prod { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.check { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--line); display: grid; place-items: center; flex-shrink: 0; color: transparent; transition: all .12s var(--ease); cursor: pointer; }
+.check.on { background: var(--orange); border-color: var(--orange); color: var(--surface); }
+.check i { width: 10px; height: 10px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+
+/* Badges and tags formatting */
+.pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 7px; font-size: .72rem; font-weight: 600; }
+.pill.blue { background: var(--blue-soft); color: var(--blue-ink); }
+.pill.red { background: var(--red-soft); color: var(--red-ink); }
+.pill.amber { background: var(--amber-soft); color: var(--amber-ink); }
+.pill.green { background: var(--green-soft); color: oklch(48% 0.13 150); }
+.rating { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.rating i { width: 12px; height: 12px; color: var(--orange); fill: var(--orange); }
+.addcol { display: flex; align-items: center; gap: 6px; padding: 10px 12px; color: var(--ink-3); font-size: .8rem; font-weight: 500; border-top: 1px solid var(--line); cursor: pointer; }
+.addcol i { width: 14px; height: 14px; }
+
+/* Floating action drawer for bulk interactions */
+.floatbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: none; justify-content: center; z-index: 50; }
+.floatbar .inner { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px; box-shadow: var(--shadow-pop); }
+.floatbar .selcount { font-size: .78rem; font-weight: 700; padding: 0 6px; }
+.fb-btn { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 500; color: var(--ink-2); padding: 5px 8px; border-radius: 8px; transition: background 0.15s; }
+.fb-btn:hover { background: var(--surface-2); }
+.fb-btn i { width: 12px; height: 12px; }
+.fb-btn.danger { color: var(--red-ink); }
+.fb-div { width: 1px; height: 18px; background: var(--line); }
+
+/* Pagination and table controls */
+.pager { display: flex; align-items: center; gap: 10px; padding: 10px 2px; flex-wrap: wrap; }
+.perpage { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--ink-3); }
+.selectbox { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: .78rem; font-weight: 600; color: var(--ink-2); }
+.selectbox i { width: 12px; height: 12px; color: var(--ink-3); }
+.pages { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.pg { min-width: 28px; height: 28px; padding: 0 6px; border-radius: 8px; display: grid; place-items: center; font-size: .78rem; font-weight: 600; color: var(--ink-2); }
+.pg:hover { background: var(--surface-2); }
+.pg.on { background: var(--orange); color: var(--surface); }
+.pg.arrow { color: var(--ink-3); }
+.goto { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--ink-3); }
+.goto input { width: 38px; height: 28px; border: 1px solid var(--line); border-radius: 8px; text-align: center; font: inherit; font-size: .78rem; background: var(--surface); color: var(--ink); }
+.goto .go { font-weight: 700; color: var(--ink); display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
+.goto .go i { width: 12px; height: 12px; }
+
+/* Views display controllers */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Workspace structural grids */
+.grid { display: grid; gap: 12px; }
+.g-2-1 { grid-template-columns: 1.55fr 1fr; }
+.g-1-1 { grid-template-columns: 1fr 1fr; }
+.card { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; background: var(--surface); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.card-title { font-size: .92rem; font-weight: 700; }
+.card-sub { font-size: .74rem; color: var(--ink-3); margin-top: 1px; }
+.chart-box { position: relative; height: 210px; }
+.chart-box.sm { height: 150px; }
+
+/* Interactive alert feeds */
+.heat { height: 6px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
+.heat i { display: block; height: 100%; border-radius: 999px; }
+.feed { display: flex; flex-direction: column; }
+.alert { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.alert:last-child { border-bottom: none; }
+.alert-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; }
+.a-red { background: var(--red-soft); color: var(--red-ink); }
+.a-amber { background: var(--amber-soft); color: var(--amber-ink); }
+.a-blue { background: var(--blue-soft); color: var(--blue-ink); }
+.alert-ico i { width: 15px; height: 15px; }
+.alert-title { font-size: .8rem; font-weight: 600; }
+.alert-meta, .alert-time { font-size: .72rem; color: var(--ink-3); }
+
+/* Premium Enterprise Alert Badges Styling */
+.alert-badge-container {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+.alert-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+.alert-status-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--surface);
+  animation: alert-pulse 2s infinite;
+}
+@keyframes alert-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Control Form Inputs style */
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-size: 0.74rem; font-weight: 600; color: var(--ink-2); margin-bottom: 3px; }
+.form-control { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 0.8rem; font-family: inherit; background: var(--surface); color: var(--ink); outline: none; transition: border-color .15s; }
+.form-control:focus { border-color: var(--orange); }
+
+/* Modal overlay configurations */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); width: 100%; max-width: 480px; box-shadow: var(--shadow-pop); overflow: hidden; animation: popUp 0.2s var(--ease); }
+@keyframes popUp { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 0.92rem; font-weight: 700; }
+.modal-header button { color: var(--ink-3); display: flex; align-items: center; }
+.modal-header button:hover { color: var(--ink); }
+.modal-body { padding: 16px; }
+
+.banner { background: var(--orange-soft); border: 1px solid var(--orange); border-radius: var(--r); padding: 10px 14px; display: flex; gap: 10px; align-items: center; }
+.banner-ico { color: var(--orange-deep); flex-shrink: 0; }
+.banner-content { font-size: 0.78rem; font-weight: 500; color: var(--ink-2); }
+
+.toast-box { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: var(--surface); padding: 8px 16px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-pop); z-index: 110; transition: transform 0.3s var(--ease), opacity 0.3s; opacity: 0; pointer-events: none; }
+.toast-box.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+.menu-btn { display: none; place-items: center; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); }
+
+/* Weight distributions progress display */
+.weight-row { margin-bottom: 10px; }
+.weight-label { display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 600; margin-bottom: 3px; color: var(--ink-2); }
+.weight-bar { height: 6px; border-radius: 99px; background: var(--line-soft); overflow: hidden; display: flex; }
+.weight-bar-fill { height: 100%; transition: width 0.3s var(--ease); }
+
+/* Responsive Adaptability Rules */
+@media(max-width:1080px){
+  .g-2-1, .g-1-1 { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(2) { border-right: none; }
+}
+@media(max-width:820px) {
+  .app { grid-template-columns: 1fr; }
+  .side { position: fixed; left: -262px; top: 0; z-index: 60; background: var(--app); height: 100vh; overflow: auto; transition: left .3s var(--ease); box-shadow: var(--shadow-pop); }
+  .side.open { left: 0; }
+  .menu-btn { display: grid; }
+  .stats { grid-template-columns: 1fr; }
+  .stat { border-right: none; border-bottom: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <div class="app">
+    
+    <!-- LEFT FREEZE PANE SIDEBAR -->
+    <aside class="side" id="side">
+      <!-- Frozen Header Section -->
+      <div class="side-header">
+        <div class="org">
+          <div class="logo">B</div>
+          <div>
+            <div class="name">BidFlow Risk</div>
+            <div class="plan">Enterprise Suite</div>
+          </div>
+          <span class="collapse" id="closeSide"><i data-lucide="chevrons-left"></i></span>
+        </div>
+        
+        <!-- Live Search Box filtering Priority Table with Cmd+K support -->
+        <div class="search">
+          <i data-lucide="search"></i>
+          <input type="text" id="sideSearch" placeholder="Search account name/ID..." oninput="syncFilterFromSearch(this.value)">
+          <span class="kbd">⌘ K</span>
+        </div>
+      </div>
+
+      <!-- Scrollable Navigation Items -->
+      <div class="side-scrollable">
+        <div class="sec">Main Menu</div>
+        <button class="nav active" data-v="dash"><i data-lucide="layout-dashboard"></i> Executive Dashboard</button>
+        <button class="nav" data-v="priority"><i data-lucide="triangle-exclamation"></i> Priority Action List <span class="count orange" id="sidebarBadge">0</span></button>
+        <button class="nav" data-v="actions"><i data-lucide="clipboard-list"></i> Retention Audit Log</button>
+        <button class="nav" data-v="control"><i data-lucide="sliders"></i> Control Panel & RFM</button>
+
+        <div class="sec">Governance</div>
+        <button class="nav" data-v="admin"><i data-lucide="shield"></i> Security & Systems</button>
+      </div>
+
+      <!-- Frozen Footer Section -->
+      <div class="side-footer">
+        <button class="foot-link" onclick="triggerHelp()"><i data-lucide="life-buoy"></i> Help center</button>
+        <button class="foot-link" onclick="triggerFeedback()"><i data-lucide="message-circle"></i> System Feedback</button>
+      </div>
+    </aside>
+
+    <!-- RIGHT CONTENT PANELS -->
+    <div class="main">
+      <div class="head">
+        <button class="menu-btn icon-btn" id="menuBtn"><i data-lucide="menu"></i></button>
+        <div class="page-title" id="ptitle">Executive Dashboard</div>
+        <div class="head-actions">
+          <button class="icon-btn" onclick="exportDataLogs()"><i data-lucide="share-2"></i></button>
+          <button class="icon-btn" onclick="showToast('Connection Active: Production Staging Sync stable.')"><i data-lucide="bell"></i></button>
+          <div class="avatars">
+            <div class="av">IS</div>
+            <div class="av more">+3</div>
+          </div>
+          <button class="btn" onclick="recalculateScores()"><i data-lucide="rotate-cw"></i> Recalculate Scores</button>
+        </div>
+      </div>
+
+      <!-- Dynamic Action Sub-Toolbar -->
+      <div class="toolbar">
+        <button class="btn"><i data-lucide="table"></i> Grid View <i data-lucide="chevron-down"></i></button>
+        
+        <!-- Segment Dropdown select -->
+        <div style="position:relative">
+          <select id="segmentFilter" class="btn" style="appearance: none; padding-right: 25px; cursor:pointer;" onchange="applyFilters()">
+            <option value="ALL">All Segments</option>
+            <option value="Enterprise">Enterprise Only</option>
+            <option value="Mid-Market">Mid-Market Only</option>
+            <option value="SMB">SMB Only</option>
+          </select>
+          <i data-lucide="chevron-down" style="position:absolute; right:10px; top:12px; width:12px; height:12px; pointer-events:none; color:var(--ink-3)"></i>
+        </div>
+
+        <!-- Risk Level dropdown select -->
+        <div style="position:relative">
+          <select id="riskLevelFilter" class="btn" style="appearance: none; padding-right: 25px; cursor:pointer;" onchange="applyFilters()">
+            <option value="ALL">All Risk Levels</option>
+            <option value="High">High Risk Only</option>
+            <option value="Medium">Medium Risk Only</option>
+            <option value="Low">Low Risk Only</option>
+          </select>
+          <i data-lucide="chevron-down" style="position:absolute; right:10px; top:12px; width:12px; height:12px; pointer-events:none; color:var(--ink-3)"></i>
+        </div>
+
+        <div class="toggle" id="statToggle">Show Statistics <span class="switch" id="statSwitch"></span></div>
+        
+        <div class="tb-right">
+          <button class="btn" onclick="triggerBulkOutreach()"><i data-lucide="sliders-horizontal"></i> Bulk Engage</button>
+          <button class="btn" onclick="downloadActionCSV()"><i data-lucide="upload"></i> Export CSV</button>
+          <button class="btn dark" onclick="openManualAddModal()"><i data-lucide="plus"></i> <span id="addLabel">Add Customer</span></button>
+        </div>
+      </div>
+
+      <!-- ============ EXECUTIVE DASHBOARD VIEW ============ -->
+      <section class="view active" id="v-dash">
+        <div class="stats statset" data-set="dash" id="dashStats" style="margin-bottom: 12px;">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <div class="banner" id="fr03Banner" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; width: 100%; transition: all 0.25s var(--ease); overflow: hidden;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <div class="banner-ico"><i data-lucide="alert-octagon"></i></div>
+            <div class="banner-content">
+              <strong>System Alert (FR-03 Compliance):</strong> Customer attrition risk calculated dynamically from transactional Recency, Frequency, and Monetary metrics. Action items completed below affect overall risk indexes immediately.
+            </div>
+          </div>
+          <button onclick="collapseFR03Banner()" style="color: var(--orange-deep); cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 6px;" title="Dismiss alert">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+
+        <div class="grid g-2-1" style="margin-bottom: 12px;">
+          <!-- ChartJS Trend over time visualizer (Redesigned with Tremor-Style) -->
+          <div class="card p-0" style="padding: 0 !important; overflow: hidden;">
+            <div style="padding: 16px 16px 8px 16px;">
+              <div class="card-title" style="font-size: .95rem; font-weight: 600;">Revenue-at-Risk Trend Timeline (FR-06)</div>
+              <div class="card-sub" style="font-size: 0.76rem; color: var(--ink-3);">Real-time monitoring of active business risk exposure vs. validated mitigations</div>
+            </div>
+            <div style="border-top: 1px solid var(--line); padding: 16px;">
+              <ul role="list" style="display: flex; flex-wrap: wrap; align-items: center; gap: 40px; list-style: none; margin-bottom: 16px; padding: 0;">
+                <li>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 11px; height: 11px; flex-shrink: 0; border-radius: 3px; background: var(--blue);" aria-hidden="true"></span>
+                    <p class="tnum" id="trend_legend_saved" style="font-size: 1.2rem; font-weight: 700; margin: 0;">Rp 0</p>
+                  </div>
+                  <p style="font-size: 0.74rem; color: var(--ink-3); margin: 0;">Mitigated Revenue (Saved)</p>
+                </li>
+                <li>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 11px; height: 11px; flex-shrink: 0; border-radius: 3px; background: var(--red);" aria-hidden="true"></span>
+                    <p class="tnum" id="trend_legend_risk" style="font-size: 1.2rem; font-weight: 700; margin: 0;">Rp 0</p>
+                  </div>
+                  <p style="font-size: 0.74rem; color: var(--ink-3); margin: 0;">Active Revenue-at-Risk</p>
+                </li>
+              </ul>
+              <div class="chart-box" style="height: 210px;"><canvas id="c_trend"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Active exceptions widget representing urgent threats -->
+          <div class="card" style="padding: 14px;">
+            <div class="card-head" style="margin-bottom: 8px;">
+              <div>
+                <div class="card-title">Urgent Retention Alerts</div>
+                <div class="card-sub">Highest monetary value accounts requiring urgent outreach</div>
+              </div>
+            </div>
+            <div class="feed" id="urgentThreatsFeed">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Attrition Risk Segment Breakdown (Doughnut) and Value Table Segment (FR-06) -->
+        <div class="grid g-2-1">
+          <!-- Doughnut distribution chart (Redesigned with Tremor UI) -->
+          <div class="card flex flex-col justify-between" style="padding: 14px;">
+            <div>
+              <div class="card-head" style="margin-bottom: 8px;">
+                <div>
+                  <div class="card-title">Attrition Risk Segment Breakdown</div>
+                  <div class="card-sub">Calculated using live configuration thresholds</div>
+                </div>
+              </div>
+              
+              <!-- Tremor-Style Split Columns (FR-06) -->
+              <div class="donut-split-grid" style="margin-top: 6px; align-items: center;">
+                <!-- Left Column: Pure Circle Donut -->
+                <div class="chart-box sm" style="height: 140px; display: flex; align-items: center; justify-content: center;">
+                  <canvas id="c_dist"></canvas>
+                </div>
+                
+                <!-- Right Column: Vertical list with left color squares -->
+                <div style="display: flex; align-items: center; justify-content: start;">
+                  <ul id="c_dist_list" style="list-style: none; padding: 0; margin: 0; width: 100%; display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Dynamically populated via JS -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Value Table showing risk profile by commercial segments -->
+          <div class="card" style="padding: 14px;">
+            <div class="card-head" style="margin-bottom: 8px;">
+              <div>
+                <div class="card-title">Risk Profile by Business Segment</div>
+                <div class="card-sub">At-risk volumes categorized by commercial tiers</div>
+              </div>
+            </div>
+            <table style="font-size: 0.82rem;">
+              <thead>
+                <tr>
+                  <th style="padding: 8px 10px;">Segment Tier</th>
+                  <th style="width:40%; padding: 8px 10px;">Risk Exposure Heatmap</th>
+                  <th class="num" style="padding: 8px 10px;">Revenue-at-Risk</th>
+                </tr>
+              </thead>
+              <tbody id="segmentRiskTable">
+                <!-- Calculated and filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRIORITY ACTION WORKSPACE VIEW ============ -->
+      <section class="view" id="v-priority">
+        <div class="stats" id="priorityStats" style="margin-bottom: 12px;"></div>
+
+        <div class="tablewrap">
+          <table id="priorityTable">
+            <thead>
+              <tr>
+                <th style="width:30%">
+                  <span style="display:inline-flex;align-items:center;gap:11px">
+                    <span class="check" id="checkAll"><i data-lucide="check"></i></span> 
+                    Customer Name
+                  </span>
+                </th>
+                <th>Segment</th>
+                <th class="num">Recency (Days)</th>
+                <th class="num">Frequency (SLA)</th>
+                <th class="num">Monetary Value</th>
+                <th style="text-align: center;">Calculated Risk</th>
+                <th>Outreach Status</th>
+                <th style="width:90px; text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="priorityRows">
+              <!-- Rendered dynamically via JS -->
+            </tbody>
+          </table>
+          <div class="addcol" onclick="openManualAddModal()"><i data-lucide="plus"></i> Stage New Customer Profile</div>
+        </div>
+
+        <!-- Floating bottom actions selection context controller -->
+        <div class="floatbar" id="floatbar">
+          <div class="inner">
+            <span class="selcount" id="selCount">0 Selected</span>
+            <button class="fb-btn" onclick="triggerBulkOutreach()"><i data-lucide="mail"></i> Bulk Outreach Action</button>
+            <button class="fb-btn" onclick="triggerBulkMitigate()"><i data-lucide="check-circle-2"></i> Mitigate Selected</button>
+            <button class="fb-btn danger" onclick="triggerBulkDelete()"><i data-lucide="trash-2"></i> Exclude Accounts</button>
+            <div class="fb-div"></div>
+            <button class="fb-btn" id="clearSel"><i data-lucide="x"></i></button>
+          </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pager">
+          <div class="perpage">Showing per page <span class="selectbox" id="perPageSelector">5 <i data-lucide="chevron-down"></i></span></div>
+          <div class="pages" id="paginationWrapper">
+            <!-- Paginated buttons will generate here -->
+          </div>
+          <div class="goto">Go to page <input value="1" id="pagerInput" onchange="changePageViaInput(this.value)" /> <span class="go" onclick="changePageViaInput($('#pagerInput').value)">Go <i data-lucide="arrow-right"></i></span></div>
+        </div>
+      </section>
+
+      <!-- ============ RETENTION AUDIT LOG VIEW ============ -->
+      <section class="view" id="v-actions">
+        <div class="stats" id="actionsStats" style="margin-bottom: 12px;"></div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Historical Retention Audit Log (FR-05)</div>
+              <div class="card-sub">Append-only transactional trail containing communications, feedback notes, and calculated financial impact</div>
+            </div>
+            <button class="btn" onclick="downloadActionCSV()"><i data-lucide="download"></i> Export Historical Audit Trail</button>
+          </div>
+          <div class="tablewrap" style="border:none;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Timestamp</th>
+                  <th>Customer Account</th>
+                  <th>Outreach Channel</th>
+                  <th>Retention Notes & Action Details</th>
+                  <th>Agent Assigned</th>
+                  <th class="num">Mitigated Revenue</th>
+                </tr>
+              </thead>
+              <tbody id="actionsLogRows">
+                <!-- Live entries loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CONTROL PANEL & ENGINE VIEW (FR-02) ============ -->
+      <section class="view" id="v-control">
+        <div class="stats" id="controlStats" style="margin-bottom: 12px;"></div>
+
+        <!-- TWO COLUMN INTERACTIVE ENGINE SANDBOX -->
+        <div class="grid g-2-1" style="margin-bottom: 12px;">
+          <!-- Left Column: Rule Form Parameters -->
+          <div class="card" style="padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 420px;">
+            <div>
+              <div class="card-head" style="margin-bottom: 14px;">
+                <div>
+                  <div class="card-title">Scoring Engine Formulation Parameters (FR-02)</div>
+                  <div class="card-sub">Adjust global mathematical weights evaluated on transactional triggers</div>
+                </div>
+                <span class="pill blue tnum" style="font-size: 0.72rem; flex-shrink: 0;">v1.0 active</span>
+              </div>
+
+              <form id="scoringConfigForm" onsubmit="saveScoringConfig(event)">
+                <!-- Modern 2x2 Grid Layout for inputs -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg_recency_med" style="font-size: 0.75rem; color: var(--ink-2); font-weight: 600;">Medium Risk Threshold</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <input type="number" id="cfg_recency_med" class="form-control" style="padding-right: 42px; font-weight: 600;" value="30" oninput="liveUpdateFormulaDistribution()" required>
+                      <span style="position: absolute; right: 10px; font-size: 0.72rem; color: var(--ink-3); font-weight: 600; pointer-events: none;">Days</span>
+                    </div>
+                  </div>
+                  
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg_recency_high" style="font-size: 0.75rem; color: var(--ink-2); font-weight: 600;">High Risk Threshold</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <input type="number" id="cfg_recency_high" class="form-control" style="padding-right: 42px; font-weight: 600;" value="60" oninput="liveUpdateFormulaDistribution()" required>
+                      <span style="position: absolute; right: 10px; font-size: 0.72rem; color: var(--ink-3); font-weight: 600; pointer-events: none;">Days</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg_freq_multiplier" style="font-size: 0.75rem; color: var(--ink-2); font-weight: 600;">Frequency Penalty Mult.</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <input type="number" step="0.1" id="cfg_freq_multiplier" class="form-control" style="padding-right: 28px; font-weight: 600;" value="1.5" oninput="liveUpdateFormulaDistribution()" required>
+                      <span style="position: absolute; right: 10px; font-size: 0.72rem; color: var(--ink-3); font-weight: 600; pointer-events: none;">x</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg_high_score" style="font-size: 0.75rem; color: var(--ink-2); font-weight: 600;">Critical Score Boundary</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <input type="number" id="cfg_high_score" class="form-control" style="padding-right: 34px; font-weight: 600;" value="70" required>
+                      <span style="position: absolute; right: 10px; font-size: 0.72rem; color: var(--ink-3); font-weight: 600; pointer-events: none;">Pts</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Formula Weight Distribution Breakdown -->
+                <div style="padding-top: 12px; border-top: 1px solid var(--line-soft);">
+                  <div class="card-title" style="font-size: 0.82rem; margin-bottom: 8px;">Relative Weight Inferences</div>
+                  
+                  <div class="weight-row" style="margin-bottom: 8px;">
+                    <div class="weight-label" style="font-size: 0.74rem;">
+                      <span>Recency (Inactivity days score)</span>
+                      <span id="weight_rec_val" class="tnum" style="font-weight: 700; color: var(--orange);">60%</span>
+                    </div>
+                    <div class="weight-bar" style="height: 6px; background: var(--line-soft);">
+                      <div id="weight_rec_bar" class="weight-bar-fill" style="width: 60%; background: var(--orange);"></div>
+                    </div>
+                  </div>
+
+                  <div class="weight-row" style="margin-bottom: 0;">
+                    <div class="weight-label" style="font-size: 0.74rem;">
+                      <span>Frequency (SLA rating variance)</span>
+                      <span id="weight_freq_val" class="tnum" style="font-weight: 700; color: var(--blue-ink);">40%</span>
+                    </div>
+                    <div class="weight-bar" style="height: 6px; background: var(--line-soft);">
+                      <div id="weight_freq_bar" class="weight-bar-fill" style="width: 40%; background: var(--blue-ink);"></div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Action button aligned elegantly to the bottom -->
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft);">
+              <button onclick="$('#scoringConfigForm').requestSubmit()" class="btn dark" style="padding: 8px 16px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px;">
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Save Configuration & Re-Calculate Engine
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Mathematical Curve Analysis (Sensitivity Spectrum) Redesigned -->
+          <div class="card" style="padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 420px;">
+            <div>
+              <div class="card-head" style="margin-bottom: 6px;">
+                <div>
+                  <div class="card-title">Formula Sensitivity Spectrum</div>
+                  <div class="card-sub">Decay simulation based on Recency days under different SLA conditions</div>
+                </div>
+                <span class="pill blue tnum" style="font-size: 0.72rem; background: var(--blue-soft); color: var(--blue-ink); flex-shrink: 0;">Interactive Spectrum</span>
+              </div>
+              
+              <!-- Premium HTML-Based Legends for Line Chart -->
+              <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px; padding: 4px 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="display: inline-block; width: 14px; height: 3px; background: var(--blue); border-radius: 99px;"></span>
+                  <span style="font-size: 0.72rem; font-weight: 600; color: var(--ink-2);">SLA 4 (Healthy Partner)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="display: inline-block; width: 14px; height: 3px; border-top: 2px dashed var(--orange); border-radius: 1px;"></span>
+                  <span style="font-size: 0.72rem; font-weight: 600; color: var(--ink-2);">SLA 2 (Unstable SLA)</span>
+                </div>
+              </div>
+
+              <div class="chart-box" style="height: 180px;"><canvas id="c_sensitivity"></canvas></div>
+            </div>
+            
+            <!-- Technical Summary Explainer -->
+            <div style="background: var(--surface-2); padding: 10px; border-radius: var(--r); margin-top: 10px; font-size: 0.76rem; border: 1px dashed var(--line);">
+              <div style="font-weight: 600; color: var(--ink); margin-bottom: 2px; display: flex; align-items: center; gap: 4px;">
+                <i data-lucide="info" style="width:12px; height:12px; color: var(--orange-deep);"></i> Sensitivity Insights
+              </div>
+              <p class="muted" style="line-height: 1.3;">
+                Adjusting thresholds on the left changes the step decay curves. Akun dengan SLA rendah (garis putus-putus) mencapai batas risiko kritis (<span style="color:var(--orange-deep); font-weight:600;">Score &ge; 70</span>) jauh lebih cepat seiring bertambahnya hari tidak aktif.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ GOVERNANCE & SECURITY VIEW ============ -->
+      <section class="view" id="v-admin">
+        <div class="stats" id="adminStats" style="margin-bottom: 12px;"></div>
+        <div class="grid g-1-1">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Staged Sandbox Connection Nodes</div>
+                <div class="card-sub">Active mock connections representing verification nodes</div>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Connection Node</th>
+                  <th>Last Sync Time</th>
+                  <th class="num">SLA Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight: 600;">Google Apps Script (GAS Mock Server)</td>
+                  <td class="muted">1 mnt lalu</td>
+                  <td class="num"><span class="pill blue">Simulated OK</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">Mock Authorization Module</td>
+                  <td class="muted">3 mnt lalu</td>
+                  <td class="num"><span class="pill blue">Dev Authorized</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">SQL Staging Database (Local Stub)</td>
+                  <td class="muted">10 mnt lalu</td>
+                  <td class="num"><span class="pill green">Healthy Stub</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">Local Anti-XSS Verification Engine</td>
+                  <td class="muted">Live active</td>
+                  <td class="num"><span class="pill blue">Simulated</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">CSP Policy Compliance Sandbox</td>
+                  <td class="muted">System check</td>
+                  <td class="num"><span class="pill green">Active</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Sandbox Governance Config & Active Roles</div>
+                <div class="card-sub">Role parameters, security variables, and mock environments</div>
+              </div>
+            </div>
+            <!-- Key Value metrics -->
+            <div class="kv" style="display: grid; grid-template-columns: 200px 1fr; gap: 12px; font-size: 0.85rem;">
+              <div style="font-weight: 600; color: var(--ink-3);">RBAC Access Roles (Simulated):</div>
+              <div>Admin, Sales Executive, CS Manager, Owner</div>
+              
+              <div style="font-weight: 600; color: var(--ink-3);">Formula Injection Shield:</div>
+              <div>Staged Sandbox Mode (Inert client protection)</div>
+
+              <div style="font-weight: 600; color: var(--ink-3);">Cross-Origin Protection:</div>
+              <div>Simulated Client Sandbox OK</div>
+
+              <div style="font-weight: 600; color: var(--ink-3);">Sandbox Session Token:</div>
+              <div style="font-family: monospace; font-size: 11px; word-break: break-all; color: var(--orange-deep);">sandbox-mock_gas-sha256_active-local_2026_07</div>
+
+              <div style="font-weight: 600; color: var(--ink-3);">Encryption Protocol:</div>
+              <div>Staged AES-256 local mockup protection</div>
+
+              <div style="font-weight: 600; color: var(--ink-3);">System Version:</div>
+              <div>BidFlow Analytics Desk v1.0-sandbox (Visual Prototype)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL WINDOWS ============ -->
+<!-- 1. Single/Bulk Outreach Modal Dialog -->
+<div class="modal-overlay" id="outreachModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Record Customer Engagement Action</h3>
+      <button onclick="closeOutreachModal()"><i data-lucide="x" style="width:16px; height:16px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="modalCustomerDetails" style="background: var(--surface-2); padding: 12px; border-radius: var(--r); margin-bottom: 14px; font-size: 0.82rem;">
+        <!-- Filled by JS -->
+      </div>
+      <form id="outreachForm" onsubmit="submitOutreachAction(event)">
+        <input type="hidden" id="modalCustId">
+        <div class="form-group">
+          <label for="outreachChannel">Outreach Channel Type</label>
+          <select id="outreachChannel" class="form-control" required>
+            <option value="Email Campaign">Email Campaign (Product Pitch)</option>
+            <option value="Direct Phone Call">Direct Phone Call (Consultation)</option>
+            <option value="Strategy Session">Executive Strategy Session (In-Person)</option>
+            <option value="Incentive Offer">Incentive / Discount Offer Code</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="outreachNotes">Engagement & Retention Notes (Mandatory - FR-04)</label>
+          <textarea id="outreachNotes" class="form-control" style="min-height: 80px;" placeholder="Identify pain points discussed, contract negotiation terms, or discount metrics..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="outreachStatus">Retention Outcome Status</label>
+          <select id="outreachStatus" class="form-control" required>
+            <option value="Contacted">Outreach Complete (Risk Mitigated)</option>
+            <option value="In Progress">In Negotiation Progress</option>
+            <option value="Declined">Refused Renewal (Lost Account)</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:9px; margin-top: 18px;">
+          <button type="button" class="btn" onclick="closeOutreachModal()">Cancel</button>
+          <button type="submit" class="btn dark">Log Action & Mitigate Risk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Manual Add Customer Modal -->
+<div class="modal-overlay" id="manualAddModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add New Client Account</h3>
+      <button onclick="closeManualAddModal()"><i data-lucide="x" style="width:16px; height:16px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="manualAddForm" onsubmit="submitManualAdd(event)">
+        <div class="form-group">
+          <label for="addCustName">Customer / Client Name</label>
+          <input type="text" id="addCustName" class="form-control" placeholder="PT Astra Internasional Tbk" required>
+        </div>
+        <div class="form-group">
+          <label for="addCustSegment">Commercial Segment Tier</label>
+          <select id="addCustSegment" class="form-control" required>
+            <option value="Enterprise">Enterprise Tier</option>
+            <option value="Mid-Market">Mid-Market Tier</option>
+            <option value="SMB">SMB Tier</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="addCustRec">Recency (Days of Inactivity)</label>
+          <input type="number" id="addCustRec" class="form-control" value="10" required>
+        </div>
+        <div class="form-group">
+          <label for="addCustFreq">Frequency Score (SLA Compliance 1-5)</label>
+          <input type="number" id="addCustFreq" class="form-control" min="1" max="5" value="5" required>
+        </div>
+        <div class="form-group">
+          <label for="addCustValue">Monetary Value (IDR Currency)</label>
+          <input type="number" id="addCustValue" class="form-control" placeholder="e.g. 500000000" required>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:9px; margin-top: 18px;">
+          <button type="button" class="btn" onclick="closeManualAddModal()">Cancel</button>
+          <button type="submit" class="btn dark">Add Customer Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Global toast notifier box -->
+<div class="toast-box" id="toastBox">
+  <i data-lucide="check-circle-2" style="width:16px; height:16px;"></i>
+  <span id="toastText">System message displayed here</span>
+</div>
+
+<script>
+window.$ = s => document.querySelector(s);
+window.$$ = s => document.querySelectorAll(s);
+
+// Global Palette Colors matching Blue Cobalt Enterprise Theme
+const P = {
+  orange: 'oklch(52% 0.22 262)', 
+  orangeSoft: 'oklch(94% 0.04 262)', 
+  blue: 'oklch(58% 0.11 250)', 
+  blueSoft: 'oklch(58% 0.11 250 / .14)', 
+  green: 'oklch(64% 0.15 150)', 
+  greenSoft: 'oklch(64% 0.15 150 / .14)',
+  amber: 'oklch(74% 0.13 82)', 
+  amberSoft: 'oklch(74% 0.13 82 / .14)',
+  red: 'oklch(64% 0.19 22)', 
+  redSoft: 'oklch(64% 0.19 22 / .12)', 
+  purple: 'oklch(58% 0.14 300)', 
+  ink3: 'oklch(62% 0.015 262)', 
+  grid: 'oklch(91.5% 0.008 262)', 
+  gray: 'oklch(85% 0.01 260)',
+  blueInk: 'oklch(52% 0.09 250)'
+};
+
+// Formatting general Charts
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+Chart.defaults.color = P.ink3;
+Chart.defaults.font.size = 11;
+const gridCfg = { color: P.grid, drawTicks: false };
+
+/* ---- ACTIVE APPLICATION DATABASES STATE ---- */
+const state = {
+  customers: [
+    { id: "CUST-001", name: "PT Astra Internasional, Tbk", segment: "Enterprise", recency: 85, freqScore: 4, monetary: 350000000, status: "Pending" },
+    { id: "CUST-002", name: "Indofood CBP Sukses Makmur", segment: "Enterprise", recency: 42, freqScore: 3, monetary: 480000000, status: "Pending" },
+    { id: "CUST-003", name: "PT GoTo Gojek Tokopedia", segment: "Enterprise", recency: 12, freqScore: 5, monetary: 750000000, status: "Pending" },
+    { id: "CUST-004", name: "Unilever Indonesia Tbk", segment: "Enterprise", recency: 92, freqScore: 2, monetary: 290000000, status: "Pending" },
+    { id: "CUST-005", name: "Kopi Kenangan Sejahtera", segment: "Mid-Market", recency: 68, freqScore: 4, monetary: 120000000, status: "Pending" },
+    { id: "CUST-006", name: "Bukalapak Core Office", segment: "Mid-Market", recency: 15, freqScore: 2, monetary: 95000000, status: "Pending" },
+    { id: "CUST-007", name: "Bumi Resources Mining", segment: "Mid-Market", recency: 55, freqScore: 1, monetary: 195000000, status: "Pending" },
+    { id: "CUST-008", name: "Sinar Mas Land Dev", segment: "Enterprise", recency: 74, freqScore: 5, monetary: 510000000, status: "Pending" },
+    { id: "CUST-009", name: "Ruangguru Education Corp", segment: "Mid-Market", recency: 32, freqScore: 3, monetary: 88000000, status: "Pending" },
+    { id: "CUST-010", name: "Mitra Adiperkasa Retail", segment: "Enterprise", recency: 5, freqScore: 4, monetary: 420000000, status: "Pending" },
+    { id: "CUST-011", name: "Anteraja Logistics Group", segment: "Mid-Market", recency: 105, freqScore: 2, monetary: 135000000, status: "Pending" },
+    { id: "CUST-012", name: "Warung Pintar Solusi", segment: "SMB", recency: 58, freqScore: 2, monetary: 45000000, status: "Pending" },
+    { id: "CUST-013", name: "Eiger Adventure Supplies", segment: "SMB", recency: 72, freqScore: 4, monetary: 60000000, status: "Pending" },
+    { id: "CUST-014", name: "Kopi Nako Franchise", segment: "SMB", recency: 14, freqScore: 5, monetary: 35000000, status: "Pending" },
+    { id: "CUST-015", name: "Hijra Bank Tech", segment: "SMB", recency: 48, freqScore: 3, monetary: 55000000, status: "Pending" }
+  ],
+  actions: [
+    { id: "ACT-101", customerId: "CUST-003", customerName: "PT GoTo Gojek Tokopedia", timestamp: "2026-07-16 14:32", type: "Strategy Session", notes: "Negotiated new license options for the Q3 pipeline. Risk successfully neutralized.", officer: "Ikhsan (Sense)", impact: 750000000, status: "Contacted" },
+    { id: "ACT-102", customerId: "CUST-010", customerName: "Mitra Adiperkasa Retail", timestamp: "2026-07-15 09:12", type: "Direct Phone Call", notes: "Called head of retail operations. Standard verification check. Customer reports stable platform state.", officer: "Ikhsan (Sense)", impact: 420000000, status: "Contacted" }
+  ],
+  config: {
+    recencyMed: 30,
+    recencyHigh: 60,
+    freqMultiplier: 1.5,
+    highScoreThreshold: 70
+  },
+  selectedIndices: new Set(),
+  pagination: {
+    currentPage: 1,
+    pageSize: 5 // Items per page
+  }
+};
+
+// Global chart state references to prevent duplicated instances/SyntaxErrors
+const charts = {
+  trend: null,
+  dist: null,
+  sensitivity: null
+};
+
+function formatIDR(val) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+}
+
+function formatIDRShort(amount) {
+  if (amount >= 1e9) return 'Rp ' + (amount / 1e9).toFixed(2) + 'B';
+  if (amount >= 1e6) return 'Rp ' + (amount / 1e6).toFixed(0) + 'M';
+  return formatIDR(amount);
+}
+
+function calculateRFM(customer) {
+  let recencyScore = 1;
+  if (customer.recency > state.config.recencyHigh) {
+    recencyScore = 5;
+  } else if (customer.recency > state.config.recencyMed) {
+    recencyScore = 3;
+  }
+
+  const freqFactor = (5 - customer.freqScore) * state.config.freqMultiplier * 6;
+  const baseScore = (recencyScore * 12) + freqFactor;
+  const finalScore = Math.min(Math.round(baseScore), 100);
+
+  let category = "Low";
+  if (finalScore >= state.config.highScoreThreshold) {
+    category = "High";
+  } else if (finalScore >= 45) {
+    category = "Medium";
+  }
+
+  return { score: finalScore, category: category };
+}
+
+// Recalculating state scores and rendering metrics (FR-03)
+window.recalculateScores = function() {
+  state.customers.forEach(cust => {
+    const calc = calculateRFM(cust);
+    cust.riskScore = calc.score;
+    cust.riskCategory = calc.category;
+  });
+
+  updateDashboardWidgets();
+  updatePriorityList();
+  updateAuditHistoryTable();
+  renderChartVisuals();
+  liveUpdateFormulaDistribution();
+};
+
+function updateDashboardWidgets() {
+  let totalRevenueAtRisk = 0;
+  let highRiskCount = 0;
+  let pendingActionsCount = 0;
+  let estimatedSavedRevenue = 0;
+  let estimatedLostRevenue = 0;
+
+  state.customers.forEach(cust => {
+    if (cust.status === "Pending") {
+      pendingActionsCount++;
+      if (cust.riskCategory === "High") {
+        totalRevenueAtRisk += cust.monetary;
+        highRiskCount++;
+      }
+    }
+  });
+
+  state.actions.forEach(act => {
+    if (act.status === "Contacted") {
+      estimatedSavedRevenue += act.impact;
+    } else if (act.status === "Declined") {
+      estimatedLostRevenue += act.impact;
+    }
+  });
+
+  const completionRate = state.actions.length > 0 
+    ? ((state.actions.length / (state.actions.length + pendingActionsCount)) * 100).toFixed(1)
+    : "0.0";
+
+  const widgetsData = [
+    { label: "Total Revenue at Risk", val: formatIDRShort(totalRevenueAtRisk), desc: "High critical accounts", d: "+4.2% MoM", dir: "up" },
+    { label: "High Risk Accounts", val: highRiskCount, desc: `out of ${state.customers.length} total`, d: "-2.1%", dir: "down" },
+    { label: "Revenue Mitigated", val: formatIDRShort(estimatedSavedRevenue), desc: `${completionRate}% mitigation rate`, d: "Progress OK", dir: "up" },
+    { label: "Revenue Lost (Declined)", val: formatIDRShort(estimatedLostRevenue), desc: "Lost contracts volume", d: "Attention", dir: "down" }
+  ];
+
+  const html = widgetsData.map(s => `
+    <div class="stat">
+      <div class="stat-label">${s.label} <i data-lucide="info" style="width:13px; height:13px;"></i></div>
+      <div class="stat-val tnum">${s.val}</div>
+      <div class="stat-foot">${s.desc} <span class="delta ${s.dir==='down'?'down':''}"><i data-lucide="arrow-${s.dir==='down'?'down':'up'}"></i> ${s.d}</span></div>
+    </div>
+  `).join('');
+
+  $('#dashStats').innerHTML = html;
+  $('#priorityStats').innerHTML = html;
+  $('#actionsStats').innerHTML = html;
+  $('#controlStats').innerHTML = html;
+  $('#adminStats').innerHTML = html;
+
+  $('#sidebarBadge').textContent = highRiskCount;
+  $('#sidebarBadge').style.display = highRiskCount > 0 ? "inline-block" : "none";
+
+  // Re-apply statistical toggle state across screens
+  const isStatsOff = $('#statSwitch').classList.contains('off');
+  $$('.stats').forEach(el => el.style.display = isStatsOff ? 'none' : 'grid');
+
+  updateUrgentThreatsFeed();
+  updateCommercialBreakdown();
+  lucide.createIcons();
+}
+
+function updateUrgentThreatsFeed() {
+  const sortedThreats = [...state.customers]
+    .filter(c => c.status === "Pending" && c.riskCategory === "High")
+    .sort((a, b) => b.monetary - a.monetary)
+    .slice(0, 5);
+
+  const feedBox = $('#urgentThreatsFeed');
+  if (sortedThreats.length === 0) {
+    feedBox.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: var(--ink-3);">
+        <i data-lucide="check-circle" style="width:28px; height:28px; color: var(--green); margin:0 auto 10px; display:block;"></i>
+        <span style="font-weight:600; font-size:0.84rem;">Clean Desk Status</span>
+        <div style="font-size:0.72rem; margin-top:2px;">No urgent customer risk alerts found!</div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  feedBox.innerHTML = sortedThreats.map(cust => {
+    // Generate clean company initials (e.g. "Unilever Indonesia Tbk" -> "UI")
+    const initials = cust.name
+      .split(' ')
+      .filter(w => !['PT', 'Tbk', 'Tbk,', ',', 'and', 'Ltd', 'Corp'].includes(w))
+      .map(w => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'CU';
+
+    return `
+      <div class="alert" style="align-items: center; padding: 10px 0;">
+        <div class="alert-badge-container">
+          <div class="alert-avatar" style="background-color: var(--surface-2); border-color: var(--line); color: var(--ink-2);">${initials}</div>
+          <span class="alert-status-dot"></span>
+        </div>
+        <div style="flex:1; margin-left: 4px;">
+          <div class="alert-title" style="font-size: 0.84rem; font-weight: 700;">${cust.name}</div>
+          <div class="alert-meta" style="font-size: 0.74rem; margin-top: 1px;">
+            ${cust.segment} • Recency: <strong>${cust.recency} Days</strong> • exposure: <strong style="color:var(--red-ink);">${formatIDRShort(cust.monetary)}</strong>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <button class="btn" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 600;" onclick="openOutreachModal('${cust.id}')">Engage</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+function updateCommercialBreakdown() {
+  const segments = ["Enterprise", "Mid-Market", "SMB"];
+  const container = $('#segmentRiskTable');
+  if (!container) return;
+
+  let totalValue = 0;
+  const segmentsData = segments.map(segName => {
+    let segmentAtRiskVolume = 0;
+    state.customers.forEach(c => {
+      if (c.status === "Pending" && c.segment === segName) {
+        segmentAtRiskVolume += c.monetary;
+      }
+    });
+    totalValue += segmentAtRiskVolume;
+    return { name: segName, value: segmentAtRiskVolume };
+  });
+
+  container.innerHTML = segmentsData.map(seg => {
+    const percentage = totalValue > 0 ? ((seg.value / totalValue) * 100) : 0;
+    let barColor = P.green;
+    if (seg.name === "Mid-Market") barColor = P.amber;
+    if (seg.name === "Enterprise") barColor = P.orange;
+
+    return `
+      <tr>
+        <td style="font-weight:600; padding: 10px 12px;">${seg.name} Contracts</td>
+        <td style="padding: 10px 12px;">
+          <div class="heat">
+            <i style="width:${percentage}%; background:${barColor}"></i>
+          </div>
+        </td>
+        <td class="num" style="font-weight:700; padding: 10px 12px;">${formatIDRShort(seg.value)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updatePriorityList() {
+  const container = $('#priorityRows');
+  if (!container) return;
+
+  const searchVal = $('#sideSearch').value.toLowerCase();
+  const segmentVal = $('#segmentFilter').value;
+  const riskVal = $('#riskLevelFilter').value;
+
+  // Filter global state dataset
+  const filtered = state.customers.filter(cust => {
+    const matchesSearch = cust.name.toLowerCase().includes(searchVal) || cust.id.toLowerCase().includes(searchVal);
+    const matchesSegment = segmentVal === "ALL" || cust.segment === segmentVal;
+    const matchesRisk = riskVal === "ALL" || cust.riskCategory === riskVal;
+    return matchesSearch && matchesSegment && matchesRisk;
+  });
+
+  // Calculate pages
+  const totalItems = filtered.length;
+  const pageSize = state.pagination.pageSize;
+  const maxPage = Math.max(1, Math.ceil(totalItems / pageSize));
+  
+  // Guard current page range
+  if (state.pagination.currentPage > maxPage) {
+    state.pagination.currentPage = maxPage;
+  }
+  const currentPage = state.pagination.currentPage;
+  $('#pagerInput').value = currentPage;
+
+  // Chop dataset for the current active page
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
+
+  // Render paginated buttons
+  renderPaginationControls(maxPage, currentPage);
+
+  if (paginatedData.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="8" style="padding: 48px; text-align: center; color: var(--ink-3);">
+          No account profiles match active segment or search criteria.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  container.innerHTML = paginatedData.map((cust) => {
+    const isSelected = state.selectedIndices.has(cust.id);
+    let badgeClass = "pill green";
+    if (cust.riskCategory === "Medium") badgeClass = "pill amber";
+    if (cust.riskCategory === "High") badgeClass = "pill red";
+
+    const isContacted = cust.status === "Contacted";
+    const isDeclined = cust.status === "Declined";
+    
+    let actionBtn = "";
+    if (isContacted) {
+      actionBtn = `<span class="pill green" style="font-size:11px; padding:2px 8px;"><i data-lucide="check" style="width:12px; height:12px; margin-right:4px;"></i> Logged</span>`;
+    } else if (isDeclined) {
+      actionBtn = `<span class="pill red" style="font-size:11px; padding:2px 8px;"><i data-lucide="x" style="width:12px; height:12px; margin-right:4px;"></i> Lost</span>`;
+    } else {
+      actionBtn = `<button class="btn" style="padding: 4px 8px; font-size:11px;" onclick="openOutreachModal('${cust.id}')"><i data-lucide="headset" style="width:12px; height:12px; margin-right:4px;"></i> Engage</button>`;
+    }
+
+    return `
+      <tr class="${isSelected ? 'sel' : ''}" data-id="${cust.id}">
+        <td>
+          <div class="cell-prod">
+            <span class="check ${isSelected ? 'on' : ''}" onclick="toggleRowSelection('${cust.id}', event)"><span style="display:flex; align-items:center; justify-content:center;"><i data-lucide="check" style="width:12px; height:12px;"></i></span></span>
+            <div>
+              <div style="font-weight:700;">${cust.name}</div>
+              <div style="font-size:0.7rem; color:var(--ink-3); font-weight:400;">ID: ${cust.id}</div>
+            </div>
+          </div>
+        </td>
+        <td class="muted">${cust.segment}</td>
+        <td class="num" style="font-weight: 600;">${cust.recency} Days</td>
+        <td class="num">
+          <span class="rating">
+            ${Array.from({ length: 5 }).map((_, i) => `<i data-lucide="star" style="width:12px; height:12px; ${i < cust.freqScore ? 'fill:var(--orange); color:var(--orange);' : 'color:var(--line);'}"></i>`).join('')}
+          </span>
+        </td>
+        <td class="num" style="font-weight:700;">${formatIDR(cust.monetary)}</td>
+        <td style="text-align: center;">
+          <span class="${badgeClass}">${cust.riskCategory} (${cust.riskScore}/100)</span>
+        </td>
+        <td>
+          <span class="pill ${isContacted ? 'green' : isDeclined ? 'red' : 'amber'}">${cust.status}</span>
+        </td>
+        <td style="text-align: right; white-space:nowrap;">
+          ${actionBtn}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+  updateFloatBarVisibility();
+}
+
+function renderPaginationControls(maxPage, currentPage) {
+  const wrapper = $('#paginationWrapper');
+  if (!wrapper) return;
+
+  let pagesHtml = `
+    <button class="pg arrow" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>
+      <i data-lucide="chevron-left" width="15" height="15"></i>
+    </button>
+  `;
+
+  for (let i = 1; i <= maxPage; i++) {
+    if (i === currentPage) {
+      pagesHtml += `<button class="pg on">${i}</button>`;
+    } else {
+      pagesHtml += `<button class="pg" onclick="changePage(${i})">${i}</button>`;
+    }
+  }
+
+  pagesHtml += `
+    <button class="pg arrow" onclick="changePage(${currentPage + 1})" ${currentPage === maxPage ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>
+      <i data-lucide="chevron-right" width="15" height="15"></i>
+    </button>
+  `;
+
+  wrapper.innerHTML = pagesHtml;
+  lucide.createIcons();
+}
+
+// Page switcher helper methods (bound to window)
+window.changePage = function(pageNumber) {
+  state.pagination.currentPage = pageNumber;
+  updatePriorityList();
+};
+
+window.changePageViaInput = function(val) {
+  const num = parseInt(val);
+  if (!isNaN(num) && num > 0) {
+    state.pagination.currentPage = num;
+    updatePriorityList();
+  }
+};
+
+function toggleRowSelection(id, event) {
+  if (event) event.stopPropagation();
+  if (state.selectedIndices.has(id)) {
+    state.selectedIndices.delete(id);
+  } else {
+    state.selectedIndices.add(id);
+  }
+  updatePriorityList();
+}
+
+function updateFloatBarVisibility() {
+  const bar = $('#floatbar');
+  const count = state.selectedIndices.size;
+  if (count > 0) {
+    bar.style.display = "flex";
+    $('#selCount').textContent = `${count} Selected`;
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+// Check/Uncheck all visible paginated items
+$('#checkAll').addEventListener('click', () => {
+  const searchVal = $('#sideSearch').value.toLowerCase();
+  const segmentVal = $('#segmentFilter').value;
+  const riskVal = $('#riskLevelFilter').value;
+
+  const filtered = state.customers.filter(cust => {
+    const matchesSearch = cust.name.toLowerCase().includes(searchVal) || cust.id.toLowerCase().includes(searchVal);
+    const matchesSegment = segmentVal === "ALL" || cust.segment === segmentVal;
+    const matchesRisk = riskVal === "ALL" || cust.riskCategory === riskVal;
+    return matchesSearch && matchesSegment && matchesRisk;
+  });
+
+  const pageSize = state.pagination.pageSize;
+  const currentPage = state.pagination.currentPage;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
+
+  const paginatedIds = paginatedData.map(c => c.id);
+  const allFilteredAreSelected = paginatedIds.every(id => state.selectedIndices.has(id));
+
+  if (allFilteredAreSelected) {
+    paginatedIds.forEach(id => state.selectedIndices.delete(id));
+  } else {
+    paginatedIds.forEach(id => state.selectedIndices.add(id));
+  }
+  updatePriorityList();
+});
+
+$('#clearSel').addEventListener('click', () => {
+  state.selectedIndices.clear();
+  updatePriorityList();
+});
+
+window.openOutreachModal = function(id) {
+  const cust = state.customers.find(c => c.id === id);
+  if (!cust) return;
+
+  $('#modalCustId').value = cust.id;
+  $('#modalCustomerDetails').innerHTML = `
+    <strong>Target Account Name:</strong> ${cust.name}<br>
+    <strong>Monetary Contract Value:</strong> ${formatIDR(cust.monetary)}<br>
+    <strong>Attrition Risk Index:</strong> ${cust.riskCategory} (${cust.riskScore}/100)
+  `;
+  $('#outreachNotes').value = "";
+  $('#outreachModal').style.display = "flex";
+};
+
+window.closeOutreachModal = function() {
+  $('#outreachModal').style.display = "none";
+};
+
+window.submitOutreachAction = function(event) {
+  event.preventDefault();
+  const id = $('#modalCustId').value;
+  const channel = $('#outreachChannel').value;
+  const notes = $('#outreachNotes').value;
+  const status = $('#outreachStatus').value;
+
+  // Single mode outreach logging
+  if (id) {
+    const cust = state.customers.find(c => c.id === id);
+    if (!cust) return;
+
+    // Fixed ACT duplication and ID Collision via Unique timestamp-hash strings (P2-9)
+    const actId = `ACT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const time = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    state.actions.unshift({
+      id: actId,
+      customerId: cust.id,
+      customerName: cust.name,
+      timestamp: time,
+      type: channel,
+      notes: notes,
+      officer: "Ikhsan (Sense)",
+      impact: cust.monetary,
+      status: status
+    });
+
+    cust.status = status;
+    showToast(`Action recorded for ${cust.name}!`);
+  } else {
+    // Bulk Outreach Processing (applying same notes to all checked items)
+    const checkedIds = Array.from(state.selectedIndices);
+    let counter = 0;
+    checkedIds.forEach(checkedId => {
+      const cust = state.customers.find(c => c.id === checkedId);
+      if (cust && cust.status === "Pending") {
+        cust.status = status;
+        counter++;
+
+        const actId = `ACT-BLK-${Date.now()}-${counter}`;
+        const time = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+        state.actions.unshift({
+          id: actId,
+          customerId: cust.id,
+          customerName: cust.name,
+          timestamp: time,
+          type: channel,
+          notes: `[Bulk Action] ${notes}`,
+          officer: "Ikhsan (Sense)",
+          impact: cust.monetary,
+          status: status
+        });
+      }
+    });
+
+    state.selectedIndices.clear();
+    showToast(`Successfully registered bulk actions on ${counter} profiles!`);
+  }
+
+  closeOutreachModal();
+  recalculateScores();
+};
+
+function updateAuditHistoryTable() {
+  const container = $('#actionsLogRows');
+  if (!container) return;
+
+  if (state.actions.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="6" style="padding: 40px; text-align: center; color: var(--ink-3);">
+          No recorded client engagement actions found in the system log.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  container.innerHTML = state.actions.map(act => {
+    const isDeclined = act.status === "Declined";
+    const statusPill = isDeclined 
+      ? `<span class="pill red" style="font-size:0.72rem;">Declined</span>`
+      : act.status === "Contacted" 
+        ? `<span class="pill green" style="font-size:0.72rem;">Mitigated</span>`
+        : `<span class="pill amber" style="font-size:0.72rem;">In Progress</span>`;
+
+    const impactPrefix = isDeclined ? "-" : "+";
+    const impactColor = isDeclined ? "color: var(--red);" : "color: var(--green);";
+
+    return `
+      <tr>
+        <td style="font-family: monospace; font-size: 0.76rem;" class="muted">${act.timestamp}</td>
+        <td>
+          <div style="font-weight: 700;">${act.customerName}</div>
+          <div style="font-size:0.7rem; color:var(--ink-3);">${act.customerId}</div>
+        </td>
+        <td>
+          <span class="pill blue" style="font-size: 0.72rem;"><i data-lucide="message-square" style="width:11px; height:11px; margin-right:4px;"></i> ${act.type}</span>
+          <div style="margin-top:4px;">${statusPill}</div>
+        </td>
+        <td style="font-style: italic; max-width: 320px; font-size:0.8rem; line-height: 1.3;" title="${act.notes}">
+          "${act.notes}"
+        </td>
+        <td class="muted">${act.officer}</td>
+        <td class="num tnum" style="font-weight: 700; ${impactColor}">
+          ${impactPrefix} ${formatIDR(act.impact)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+function renderChartVisuals() {
+  const ctxTrend = $('#c_trend').getContext('2d');
+  
+  // Calculate dynamic live checkpoint metrics
+  let totalSaved = 0;
+  let totalActiveAtRisk = 0;
+
+  state.customers.forEach(cust => {
+    if (cust.status === "Pending" && cust.riskCategory === "High") {
+      totalActiveAtRisk += cust.monetary;
+    }
+  });
+
+  state.actions.forEach(act => {
+    if (act.status === "Contacted") {
+      totalSaved += act.impact;
+    }
+  });
+
+  // Inject Tremor-style Dynamic Header Metric Values
+  $('#trend_legend_saved').textContent = formatIDRShort(totalSaved);
+  $('#trend_legend_risk').textContent = formatIDRShort(totalActiveAtRisk);
+
+  // Plot actual calculated data trends (FR-06)
+  const riskProjectionData = [1860000000, 1680000000, 1410000000, totalActiveAtRisk];
+  const mitigatedProjectionData = [0, 180000000, 450000000, totalSaved];
+
+  if (charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctxTrend, {
+    type: 'line',
+    data: {
+      labels: ['April 2026', 'May 2026', 'June 2026', 'July 2026 (Live)'],
+      datasets: [
+        {
+          label: 'Mitigated Value',
+          data: mitigatedProjectionData,
+          borderColor: P.blue,
+          backgroundColor: 'rgba(59, 130, 246, 0.06)',
+          fill: true,
+          tension: .3,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        },
+        {
+          label: 'Active Revenue-at-Risk',
+          data: riskProjectionData,
+          borderColor: P.red,
+          backgroundColor: 'rgba(239, 68, 68, 0.06)',
+          fill: true,
+          tension: .3,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false } // Hidden to respect the Tremor layout styling
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          grid: gridCfg,
+          border: { display: false },
+          ticks: {
+            // Task 1: Dynamically Format Y-axis Labels to scale perfectly
+            callback: function(value) {
+              if (value >= 1e9) {
+                return 'Rp ' + (value / 1e9).toFixed(1) + 'B';
+              } else if (value >= 1e6) {
+                return 'Rp ' + (value / 1e6).toFixed(0) + 'M';
+              } else if (value >= 1e3) {
+                return 'Rp ' + (value / 1e3).toFixed(0) + 'K';
+              }
+              return 'Rp ' + value;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const ctxDist = $('#c_dist').getContext('2d');
+  let highRiskVal = 0;
+  let mediumRiskVal = 0;
+  let lowRiskVal = 0;
+
+  state.customers.forEach(cust => {
+    if (cust.status === "Pending") {
+      if (cust.riskCategory === "High") highRiskVal += cust.monetary;
+      else if (cust.riskCategory === "Medium") mediumRiskVal += cust.monetary;
+      else lowRiskVal += cust.monetary;
+    }
+  });
+
+  const totalRiskValue = highRiskVal + mediumRiskVal + lowRiskVal;
+
+  if (charts.dist) charts.dist.destroy();
+  charts.dist = new Chart(ctxDist, {
+    type: 'doughnut',
+    data: {
+      labels: ['High Risk Exposure', 'Medium Risk Exposure', 'Healthy Accounts'],
+      datasets: [{
+        data: [highRiskVal, mediumRiskVal, lowRiskVal],
+        backgroundColor: [P.red, P.amber, P.green],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '75%',
+      plugins: {
+        legend: { display: false }, // Use custom Tremor-style list instead
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return ' ' + context.label + ': ' + formatIDRShort(context.raw);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Populate Tremor-Style Legend Split Columns
+  const distData = [
+    { name: 'High Risk Exposure', amount: highRiskVal, bgClass: 'background: var(--red);', share: totalRiskValue > 0 ? ((highRiskVal / totalRiskValue) * 100).toFixed(1) + '%' : '0%' },
+    { name: 'Medium Risk Exposure', amount: mediumRiskVal, bgClass: 'background: var(--amber);', share: totalRiskValue > 0 ? ((mediumRiskVal / totalRiskValue) * 100).toFixed(1) + '%' : '0%' },
+    { name: 'Healthy Accounts', amount: lowRiskVal, bgClass: 'background: var(--green);', share: totalRiskValue > 0 ? ((lowRiskVal / totalRiskValue) * 100).toFixed(1) + '%' : '0%' }
+  ];
+
+  $('#c_dist_list').innerHTML = distData.map(item => `
+    <li class="flex" style="gap: 12px; align-items: flex-start;">
+      <span style="${item.bgClass} width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; margin-top: 4px;" aria-hidden="true"></span>
+      <div>
+        <p class="tnum" style="font-size: 0.88rem; font-weight: 700; margin: 0; line-height: 1.2;">
+          ${formatIDRShort(item.amount)} <span style="font-weight: 500; font-size: 0.78rem; color: var(--ink-3);">(${item.share})</span>
+        </p>
+        <p style="font-size: 0.78rem; color: var(--ink-3); margin: 4px 0 0 0;">${item.name}</p>
+      </div>
+    </li>
+  `).join('');
+
+  // Redraw Sensitivity Curve
+  renderSensitivityChart();
+}
+
+function renderSensitivityChart() {
+  const ctxSens = $('#c_sensitivity');
+  if (!ctxSens) return;
+
+  const recencies = Array.from({ length: 25 }, (_, i) => i * 5); // 0, 5, 10 ... 120 Days
+  const config = {
+    recencyMed: parseInt($('#cfg_recency_med').value) || 30,
+    recencyHigh: parseInt($('#cfg_recency_high').value) || 60,
+    freqMultiplier: parseFloat($('#cfg_freq_multiplier').value) || 1.5,
+    highScoreThreshold: parseInt($('#cfg_high_score').value) || 70
+  };
+
+  // Generate scores for dynamic SLA scores 2 and 4
+  const scoresSLA4 = recencies.map(rec => {
+    let recScore = 1;
+    if (rec > config.recencyHigh) recScore = 5;
+    else if (rec > config.recencyMed) recScore = 3;
+    const freqFactor = (5 - 4) * config.freqMultiplier * 6;
+    return Math.min(Math.round((recScore * 12) + freqFactor), 100);
+  });
+
+  const scoresSLA2 = recencies.map(rec => {
+    let recScore = 1;
+    if (rec > config.recencyHigh) recScore = 5;
+    else if (rec > config.recencyMed) recScore = 3;
+    const freqFactor = (5 - 2) * config.freqMultiplier * 6;
+    return Math.min(Math.round((recScore * 12) + freqFactor), 100);
+  });
+
+  if (charts.sensitivity) charts.sensitivity.destroy();
+  charts.sensitivity = new Chart(ctxSens.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: recencies.map(r => r + 'd'),
+      datasets: [
+        {
+          label: 'Client SLA Rank: 4 (Healthy Partner)',
+          data: scoresSLA4,
+          borderColor: P.blue,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.1
+        },
+        {
+          label: 'Client SLA Rank: 2 (Unstable/At-Risk SLA)',
+          data: scoresSLA2,
+          borderColor: P.orange,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 2,
+          borderDash: [4, 4],
+          tension: 0.1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false } // Hidden to use premium custom HTML legend
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          min: 0,
+          max: 100,
+          grid: gridCfg,
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Tuning rules configuration changes
+window.saveScoringConfig = function(event) {
+  if (event) event.preventDefault();
+
+  state.config.recencyMed = parseInt($('#cfg_recency_med').value);
+  state.config.recencyHigh = parseInt($('#cfg_recency_high').value);
+  state.config.freqMultiplier = parseFloat($('#cfg_freq_multiplier').value);
+  state.config.highScoreThreshold = parseInt($('#cfg_high_score').value);
+
+  recalculateScores();
+  showToast("Global scoring rules updated successfully!");
+};
+
+window.liveUpdateFormulaDistribution = function() {
+  const med = parseInt($('#cfg_recency_med').value) || 30;
+  const high = parseInt($('#cfg_recency_high').value) || 60;
+  const mult = parseFloat($('#cfg_freq_multiplier').value) || 1.5;
+
+  // Maximum impact metrics
+  const maxRecencyScore = 5; // Highest score
+  const maxRecencyImpact = maxRecencyScore * 12; // 60 pts
+  
+  const minFrequencyScore = 1; // Worst frequency score
+  const maxFrequencyImpact = (5 - minFrequencyScore) * mult * 6; // max factor
+
+  const totalPossible = maxRecencyImpact + maxFrequencyImpact;
+  
+  const recencyPercentage = Math.round((maxRecencyImpact / totalPossible) * 100);
+  const frequencyPercentage = 100 - recencyPercentage;
+
+  $('#weight_rec_val').textContent = recencyPercentage + '%';
+  $('#weight_rec_bar').style.width = recencyPercentage + '%';
+
+  $('#weight_freq_val').textContent = frequencyPercentage + '%';
+  $('#weight_freq_bar').style.width = frequencyPercentage + '%';
+
+  // Redraw Sensitivity Curve
+  renderSensitivityChart();
+};
+
+window.downloadActionCSV = function() {
+  let content = "data:text/csv;charset=utf-8,";
+  content += "ActionID,CustomerID,CustomerName,Timestamp,ActionChannel,Notes,Operator,ValueSaved,Status\n";
+
+  state.actions.forEach(act => {
+    const cleanNotes = act.notes.replace(/"/g, '""');
+    content += `"${act.id}","${act.customerId}","${act.customerName}","${act.timestamp}","${act.type}","${cleanNotes}","${act.officer}",${act.impact},"${act.status}"\n`;
+  });
+
+  const encoded = encodeURI(content);
+  const link = document.createElement("a");
+  link.setAttribute("href", encoded);
+  link.setAttribute("download", `BidFlow_Retention_Audit_Log_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast("Audit Log CSV successfully exported.");
+};
+
+window.exportDataLogs = function() {
+  window.downloadActionCSV();
+};
+
+const metaRoutes = {
+  dash: ["Executive Dashboard", "Add Custom KPI"],
+  priority: ["Priority Action List (FR-03)", "Staged Bulk Segment"],
+  actions: ["Retention Audit Log (FR-05)", "Export Data File"],
+  control: ["Control Panel & Engine (FR-02)", "Add Client Account"],
+  admin: ["Governance & Security Systems", "Review Audit Logs"]
+};
+
+$$('.nav[data-v]').forEach(button => {
+  button.addEventListener('click', () => {
+    $$('.nav').forEach(x => x.classList.remove('active'));
+    button.classList.add('active');
+
+    const viewName = button.dataset.v;
+    $$('.view').forEach(s => s.classList.remove('active'));
+    $(`#v-${viewName}`).classList.add('active');
+
+    $('#ptitle').textContent = metaRoutes[viewName][0];
+    $('#addLabel').textContent = metaRoutes[viewName][1];
+
+    if (viewName === "dash") {
+      setTimeout(renderChartVisuals, 60);
+    } else if (viewName === "priority") {
+      updatePriorityList();
+    } else if (viewName === "control") {
+      setTimeout(() => {
+        liveUpdateFormulaDistribution();
+      }, 60);
+    }
+
+    $('#side').classList.remove('open');
+  });
+});
+
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+$('#closeSide').addEventListener('click', () => $('#side').classList.remove('open'));
+
+const sw = $('#statSwitch');
+$('#statToggle').addEventListener('click', () => {
+  sw.classList.toggle('off');
+  const visible = !sw.classList.contains('off');
+  $$('.stats').forEach(el => el.style.display = visible ? 'grid' : 'none');
+});
+
+window.syncFilterFromSearch = function() {
+  state.pagination.currentPage = 1; // Reset to page 1 on active search filter
+  updatePriorityList();
+};
+
+window.applyFilters = function() {
+  state.pagination.currentPage = 1; // Reset to page 1 on filtering selection
+  updatePriorityList();
+};
+
+// Keyboard shortcut (⌘ K / Ctrl + K) for quick search focus
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    $('#sideSearch').focus();
+    showToast("Search field active. Enter Name or ID.");
+  }
+});
+
+window.triggerBulkOutreach = function() {
+  const ids = Array.from(state.selectedIndices);
+  if (ids.length === 0) {
+    showToast("Please select at least one account to engage.");
+    return;
+  }
+  
+  $('#modalCustId').value = ""; // Empty value signals bulk outreach mode
+  $('#modalCustomerDetails').innerHTML = `
+    <strong>Target Accounts:</strong> ${ids.length} Selected Portfolios<br>
+    <strong>Total Aggregated Value at Risk:</strong> ${formatIDR(
+      state.customers.filter(c => ids.includes(c.id)).reduce((acc, c) => acc + c.monetary, 0)
+    )}
+  `;
+  $('#outreachNotes').value = "";
+  $('#outreachModal').style.display = "flex";
+};
+
+window.triggerBulkMitigate = function() {
+  const ids = Array.from(state.selectedIndices);
+  let count = 0;
+  
+  ids.forEach(id => {
+    const cust = state.customers.find(c => c.id === id);
+    if (cust && cust.status === "Pending") {
+      cust.status = "Contacted";
+      count++;
+      
+      const actId = `ACT-BLK-MIT-${Date.now()}-${count}`;
+      
+      state.actions.unshift({
+        id: actId,
+        customerId: cust.id,
+        customerName: cust.name,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        type: "Bulk Outreach Action",
+        notes: "Automated bulk risk mitigation action logged directly through priority workspace selection console.",
+        officer: "Ikhsan (Sense)",
+        impact: cust.monetary,
+        status: "Contacted"
+      });
+    }
+  });
+
+  state.selectedIndices.clear();
+  recalculateScores();
+  showToast(`Mitigated risk exposure for ${count} clients!`);
+};
+
+window.triggerBulkDelete = function() {
+  const ids = Array.from(state.selectedIndices);
+  state.customers = state.customers.filter(c => !state.selectedIndices.has(c.id));
+  state.selectedIndices.clear();
+  recalculateScores();
+  showToast(`Excluded ${ids.length} entries from workspace rosters.`);
+};
+
+// Customer Profile manual staging dialog controls
+window.openManualAddModal = function() {
+  $('#manualAddModal').style.display = "flex";
+};
+
+window.closeManualAddModal = function() {
+  $('#manualAddModal').style.display = "none";
+};
+
+window.submitManualAdd = function(event) {
+  event.preventDefault();
+  
+  const name = $('#addCustName').value;
+  const segment = $('#addCustSegment').value;
+  const rec = parseInt($('#addCustRec').value);
+  const freq = parseInt($('#addCustFreq').value);
+  const val = parseFloat($('#addCustValue').value);
+
+  const customId = `CUST-${Date.now().toString().slice(-3)}`;
+
+  state.customers.push({
+    id: customId,
+    name: name,
+    segment: segment,
+    recency: rec,
+    freqScore: freq,
+    monetary: val,
+    status: "Pending"
+  });
+
+  closeManualAddModal();
+  recalculateScores();
+  showToast(`Successfully added profile for ${name}!`);
+};
+
+window.showToast = function(message) {
+  const toast = $('#toastBox');
+  $('#toastText').textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+};
+
+window.collapseFR03Banner = function() {
+  const banner = $('#fr03Banner');
+  if (banner) {
+    banner.style.opacity = '0';
+    banner.style.transform = 'translateY(-8px)';
+    banner.style.maxHeight = '0';
+    banner.style.padding = '0';
+    banner.style.marginTop = '0';
+    banner.style.marginBottom = '0';
+    banner.style.border = 'none';
+    setTimeout(() => {
+      banner.style.display = 'none';
+    }, 250);
+  }
+};
+
+window.triggerHelp = function() {
+  showToast("Accessing BidFlow documentation hub...");
+};
+
+window.triggerFeedback = function() {
+  showToast("Feedback system operational. Logs exported.");
+};
+
+window.onload = function() {
+  recalculateScores();
+};
+</script>
+</body>
+</html>

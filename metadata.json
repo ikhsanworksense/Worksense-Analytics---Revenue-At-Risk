@@ -1,0 +1,6 @@
+{
+  "name": "Worksense Analytics",
+  "description": "Worksense — Revenue-at-Risk Analytics Portal for dynamic calculation of customer attrition risk from Recency, Frequency, and Monetary metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
