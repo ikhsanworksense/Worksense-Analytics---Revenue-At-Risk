@@ -128,7 +128,7 @@ export default function App() {
   const [segmentFilter, setSegmentFilter] = useState<string>("ALL");
   const [riskLevelFilter, setRiskLevelFilter] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 5;
+  const pageSize = 10;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [showStats, setShowStats] = useState<boolean>(true);
